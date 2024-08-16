@@ -29,7 +29,9 @@ typedef enum {
     ADD,
     SUB,
     MULT,
-    PAREN
+    DIV,
+    PAREN,
+    EQ
 } node_type_t;
 
 
@@ -60,11 +62,14 @@ typedef struct node {
 //          | <T>
 // M - Multiplication
 //     <M> :- <G> * <M>
+//     <M> :- <G> / <M>
 //          | <G>
 // E - Expression
 //     <E> :- <M> + <E>
 //          | <M> - <E>
 //          | <M>
+// Q - Equation
+//     <Q> :- <E> = <E>
 
 
 int cleanline(char *dirty, char *clean);
@@ -109,10 +114,9 @@ main() {
             line_end = cleanline(buf, line);
             line_pos = 0;
             
-            printf("line_end: %d, v: %d\n", line_end, v);
+            // printf("line_end: %d, v: %d\n", line_end, v);
             printf("Got Line: %s\n", line);
-            
-            printf("line[end]: %c\n", line[line_end]);
+            // printf("line[end]: %c\n", line[line_end]);
         }
         else {
             printf("\n");
@@ -123,7 +127,7 @@ main() {
         printf("Tree:\n");
         printTree(e, 1);
         node *t = evalTree(e);
-        printf("Evaluated tree:\n");
+        printf("Reduced tree:\n");
         printTree(t, 1);
         freeTree(e);
         freeTree(t);
@@ -179,6 +183,14 @@ makeSub(node *E1, node *E2) {
 node *
 makeMult(node *E1, node *E2) {
     return makeBinOp(E1, E2, MULT);
+}
+node *
+makeDiv(node *E1, node *E2) {
+    return makeBinOp(E1, E2, DIV);
+}
+node *
+makeEq(node *E1, node *E2) {
+    return makeBinOp(E1, E2, EQ);
 }
 
 
@@ -305,11 +317,16 @@ node *
 parseM() {
     // M - Multiplication
     // <M> :- <G> * <M>
+    // <M> :- <G> / <M>
     //      | <G>
     node *G = parseG();
     if( peek() == '*' ) {
         next();
         return makeMult(G, parseM());
+    }
+    if( peek() == '/' ) {
+        next();
+        return makeDiv(G, parseM());
     }
     return G;
 }
@@ -336,7 +353,13 @@ node *
 parse() {
     node *n = parseE();
     if( !end() ) {
-        printf("DID NOT REACH END\n  line_pos: %d | peek(): %c\n", line_pos, peek());
+        if( peek() != '=' ) {
+            printf("DID NOT REACH END\n  line_pos: %d | peek(): %c\n", line_pos, peek());
+        } else {
+            next();
+            printf("Parsing equation\n");
+            return makeEq(n, parseE());
+        }
     }
     return n;
 }
@@ -414,6 +437,8 @@ distribute(node *l, node *r) {
     }
 }
 
+// 4*(3*x) -> only 3 and 4 get multiplied
+// Formalize distribute/combine like terms loop
 node *
 multEval(node *n) {
     node *l = evalTree(n->e1);
@@ -450,10 +475,36 @@ multEval(node *n) {
     return makeMult(l, r);
 }
 
+node *
+divEval(node *n) {
+    node *l = evalTree(n->e1);
+    node *r = evalTree(n->e2);
+
+    if( (l->t == VALUE) && (r->t == VALUE) ) {
+        if( l->val == 0 ) {
+            freeTree(l);
+            freeTree(r);
+            return makeVal(0);
+        }
+        if( r->val == 0 ) {
+            printf("GOT DIVISION BY 0, EXITING!\n");
+            exit(-1);
+        }
+        float val = l->val / r->val;
+        freeTree(l);
+        freeTree(r);
+        return makeVal(val);
+    }
+
+    return makeDiv(l, r);
+}
+
 
 node *
 evalTree(node *n) {
     switch (n->t) {
+        case EQ:
+            return makeEq(evalTree(n->e1), evalTree(n->e2));
         case PAREN:
             return evalTree(n->e1);
         case VALUE:
@@ -466,8 +517,31 @@ evalTree(node *n) {
             return subEval(n);
         case MULT:
             return multEval(n);
+        case DIV:
+            return divEval(n);
         default:
             printf("evalTree hit default case\n");
+    }
+}
+
+
+node *
+solve(node *n) {
+    if( n->t != EQ ) {
+        printf("Called solve on expression\n");
+        return NULL;
+    }
+
+    if( n->e1->t == VALUE ) {
+        if ( n->e2->t == VARIABLE ) {
+            return n;
+        }
+        switch (n->e2->t) {
+            case ADD:
+                
+        }
+    } else if ( n->e2->t == VALUE ) {
+        
     }
 }
 
@@ -519,6 +593,18 @@ printTree(node *n, int c) {
             printTree(n->e1, c+1);
             printSpace(c);
             printf("*\n");
+            printTree(n->e2, c+1);
+            break;
+        case DIV:
+            printTree(n->e1, c+1);
+            printSpace(c);
+            printf("/\n");
+            printTree(n->e2, c+1);
+            break;
+        case EQ:
+            printTree(n->e1, c+1);
+            printSpace(c);
+            printf("=\n");
             printTree(n->e2, c+1);
             break;
     }
