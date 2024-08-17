@@ -1,3 +1,4 @@
+#!/usr/bin/python
 
 line = ""
 
@@ -7,6 +8,8 @@ line = ""
 # N - Number
 #     <N> :- <D> <N>
 #          | ε
+# V - Variable
+#     <V> :- a|b|...|y|z
 # S - Singleton
 #     <S> :- <N>
 #          | <V>
@@ -29,11 +32,40 @@ line = ""
 
 
 
+def add_spaces(lines, prefix=" "):
+    return "\n".join([prefix + l for l in lines.split("\n") if l])
+
 class Node:
-    def __init__(self, node_t, val=0, children=[]):
-        self.t = node_t
+    def __init__(self):
+        pass
+
+class ValNode(Node):
+    def __init__(self, val):
         self.val = val
+    def __str__(self):
+        return str(self.val) + "\n"
+
+class VarNode(Node):
+    def __init__(self, var):
+        self.var = var
+    def __str__(self):
+        return str(self.var) + "\n"
+
+class OpNode(Node):
+    def __init__(self, op, children):
+        self.op = op
         self.children = children
+    def __str__(self):
+        s = ""
+        for c in self.children:
+            if s:
+                s += str(self.op) + "\n"
+            s += add_spaces(str(c)) + "\n"
+        return s
+
+class TermNode(Node):
+    def __init__(self, child):
+        self.child = child
         
 
 def peek():
@@ -52,22 +84,22 @@ def panic(c='none'):
 
 
 def makeVal(v):
-    return Node(node_t="VAL", val=v)
+    return ValNode(v)
 
 def makeVar(v):
-    return Node(node_t="VAR", val=v)
+    return VarNode(v)
 
 def makeMult(a, b):
-    return Node(node_t="MULT", children=[a,b])
+    return OpNode('*', [a, b])
 
 def makeDiv(a, b):
-    return Node(node_t="DIV", children=[a,b])
+    return OpNode('/', [a, b])
 
 def makeAdd(a, b):
-    return Node(node_t="ADD", children=[a,b])
+    return OpNode('+', [a, b])
 
 def makeSub(a, b):
-    return Node(node_t="SUB", children=[a,b])
+    return OpNode('-', [a, b])
 
 def parseN_helper(v):
     n = peek()
@@ -79,10 +111,15 @@ def parseN_helper(v):
     return v
 
 def parseN():
+    # N - Number
+    #     <N> :- <D> <N>
+    #          | ε
     v = parseN_helper(0)
     return makeVal(v)
 
 def parseV():
+    # V - Variable
+    #     <V> :- a|b|...|y|z
     n = peek()
     if n.isalpha():
         next_c()
@@ -90,6 +127,9 @@ def parseV():
     panic('V')
 
 def parseS():
+    # S - Singleton
+    #     <S> :- <N>
+    #          | <V>
     c = peek()
     if c.isdigit():
         return parseN()
@@ -98,6 +138,9 @@ def parseS():
     panic('S')
 
 def parseT():
+    # T - Term (multiplicative group)
+    #     <T> :- ( <E> )
+    #          | <S>
     if peek() == '(':
         next_c()
         E = parseE()
@@ -118,12 +161,19 @@ def is_T():
     return (is_S() or peek() == '(')
 
 def parseG():
+    # G - Group (of terms)
+    #     <G> :- <T> <G>
+    #          | <T>
     T = parseT()
     if is_T():
         return makeMult(T, parseG())
     return T
 
 def parseM():
+    # M - Multiplication
+    #     <M> :- <G> * <M>
+    #     <M> :- <G> / <M>
+    #          | <G>
     G = parseG()
     if peek() == '*':
         next_c()
@@ -134,6 +184,10 @@ def parseM():
     return G
 
 def parseE():
+    # E - Expression
+    #     <E> :- <M> + <E>
+    #          | <M> - <E>
+    #          | <M>
     M = parseM()
     if peek() == '+':
         next_c()
@@ -144,37 +198,12 @@ def parseE():
     return M
 
 
-def printTree(t, offset=0):
-    if not t:
-        print("GOT NONE")
-        return
-    if t.t == "VAL" or t.t == "VAR":
-        print(f"{' ' * offset}{t.val}")
-    if t.t == "ADD":
-        printTree(t.children[0], offset+1)
-        print(f"{' ' * offset}+")
-        printTree(t.children[1], offset+1)
-    if t.t == "SUB":
-        printTree(t.children[0], offset+1)
-        print(f"{' ' * offset}-")
-        printTree(t.children[1], offset+1)
-    if t.t == "MULT":
-        printTree(t.children[0], offset+1)
-        print(f"{' ' * offset}*")
-        printTree(t.children[1], offset+1)
-    if t.t == "DIV":
-        printTree(t.children[0], offset+1)
-        print(f"{' ' * offset}/")
-        printTree(t.children[1], offset+1)
-
-
-
 if __name__ == "__main__":
     while True:
         line = "".join(input('> ').split(" "))
         print(f"Got line: {line}")
         t = parseE()
         print(f"Got tree:")
-        printTree(t)
+        print(t)
 
     
