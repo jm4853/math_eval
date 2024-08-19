@@ -110,7 +110,7 @@ class ValNode(Node):
         return super().__truediv__(self, other)
     def flatten(self):
         return ValNode(self.val)
-    def eval(self, t):
+    def eval(self):
         return ValNode(self.val)
         
 
@@ -121,7 +121,7 @@ class VarNode(Node):
         return str(self.var) + "\n"
     def flatten(self):
         return VarNode(self.var)
-    def eval(self, t):
+    def eval(self, t=0):
         return VarNode(self.var)
         
 
@@ -145,21 +145,28 @@ class OpNode(Node):
             else:
                 new_children.append(c)
         return OpNode(self.op, new_children)
-    def eval(self, t=0):
+    def eval(self):
+        # Recursively evaluate children
+        eval_children = [c.eval() for c in self.children]
         constant = None
+        # If the first value is a value than we can combine all the
+        # values. If its not the first value, it can get confusing
+        # with operations like "x - 1 - 1"
+        #   Could be fixed by making all operations order independent
+        #   i.e. "x - 1 - 1" => "x + (-1) + (-1)"
+        if isinstance(eval_children[0], ValNode):
+            constant = eval_children[0]
+            eval_children = eval_children[1:]
         new_children = []
-        print(f"{t}> In eval for\n{self}")
-        for c in self.children:
-            print(f"{t}> Calling eval on child\n{c}")
-            c = c.eval(t+1)
-            print(f"{t}> Finished recursive call, got back (type: {type(c)})\n{c}")
-            if isinstance(c, ValNode):
+        for c in eval_children:
+            # If the child is a value, combine it with constant
+            if constant and isinstance(c, ValNode):
                 constant = self.op.do([constant, c])
-                print(f"{t}> Added child to constant, now: {constant.val}")
+            # Otherwise, add it to new_children
             else:
                 new_children.append(c)
-        if constant.val != 0:
-            new_children.append(constant)
+        if constant:
+            new_children = [constant] + new_children
         if len(new_children) == 1:
             return new_children[0]
         return OpNode(self.op, new_children)
@@ -205,8 +212,7 @@ def makeAdd(a, b):
     return OpNode(BIN_ADD, [a, b])
 
 def makeSub(a, b):
-    return OpNode(BIN_ADD, [a, makeVal(-1) * b])
-    # return OpNode(BIN_SUB, [a, b])
+    return OpNode(BIN_SUB, [a, b])
 
 
 def parseN_helper(v):
@@ -305,12 +311,16 @@ def parseE():
         return makeSub(M, parseE())
     return M
 
+def parse():
+    # Must flatten or sub/div wont work
+    return parseE().flatten()
+
 
 if __name__ == "__main__":
     while True:
         line = "".join(input('> ').split(" "))
         print(f"Got line: {line}")
-        t = parseE()
+        t = parse()
         print(f"Got tree:")
         print(t)
 
