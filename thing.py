@@ -5,6 +5,7 @@ line = ""
 
 # Next expression to fix: "x-x-1-1-x-1"
 #   -> Gotta make classes for each node type
+#        -> Probably worth making them derive OpNode class
 
 
 # D - Digit
