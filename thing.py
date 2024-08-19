@@ -3,6 +3,10 @@
 line = ""
 
 
+# Next expression to fix: "x-x-1-1-x-1"
+#   -> Gotta make classes for each node type
+
+
 # D - Digit
 #     <D> :- 0|1|...|8|9
 # N - Number
@@ -202,17 +206,17 @@ def makeVal(v):
 def makeVar(v):
     return VarNode(v)
 
-def makeMult(a, b):
-    return OpNode(BIN_MULT, [a, b])
+def makeMult(nodes):
+    return OpNode(BIN_MULT, nodes)
 
-def makeDiv(a, b):
-    return OpNode(BIN_DIV, [a, b])
+def makeDiv(nodes):
+    return OpNode(BIN_DIV, nodes)
 
-def makeAdd(a, b):
-    return OpNode(BIN_ADD, [a, b])
+def makeAdd(nodes):
+    return OpNode(BIN_ADD, nodes)
 
-def makeSub(a, b):
-    return OpNode(BIN_SUB, [a, b])
+def makeSub(nodes):
+    return OpNode(BIN_SUB, nodes)
 
 
 def parseN_helper(v):
@@ -280,7 +284,7 @@ def parseG():
     #          | <T>
     T = parseT()
     if is_T():
-        return makeMult(T, parseG())
+        return makeMult([T, parseG()])
     return T
 
 def parseM():
@@ -291,10 +295,10 @@ def parseM():
     G = parseG()
     if peek() == '*':
         next_c()
-        return makeMult(G, parseM())
+        return makeMult([G, parseM()])
     if peek() == '/':
         next_c()
-        return makeDiv(G, parseM())
+        return makeDiv([G, parseM()])
     return G
 
 def parseE():
@@ -305,16 +309,31 @@ def parseE():
     M = parseM()
     if peek() == '+':
         next_c()
-        return makeAdd(M, parseE())
+        return makeAdd([M, parseE()])
     if peek() == '-':
         next_c()
-        return makeSub(M, parseE())
+        return makeSub([M, parseE()])
     return M
 
 def parse():
     # Must flatten or sub/div wont work
     return parseE().flatten()
 
+def sub2add(t):
+    if isinstance(t, OpNode):
+        new_children = [sub2add(c) for c in t.children]
+        if t.op == BIN_SUB:
+            return makeAdd([new_children[0],
+                            makeMult([makeVal(-1),
+                                      makeAdd(new_children[1:])])])
+        return OpNode(t.op, new_children)
+    else:
+        return t
+def div2mult(t):
+    return t
+def eval_tree(t):
+    return div2mult(sub2add(t)).eval()
+    
 
 if __name__ == "__main__":
     while True:
