@@ -1,27 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 /*
-
-
-// E - Expression
-//     <E> :- <T> + <E>
-//          | <T> - <E>
-//          | <T>
-// T - Terms (multiplicative group)
-//     <T> :- <V> * <T>
-//         ?| <V><V>
-//          | <V>
-// V - Value
-//     <V> :- ( <E> )
-//          | <N>
-// N - Number
-//     <N> :- <D> <N>
-//          | ε
-// D - Digit
-//     <D> :- 0|1|...|8|9
-
-
-*/
+ * This is just an old proof of concept that sort
+ * of kicked off this whole project. Nothing of
+ * particular value is in this file
+ */
 
 typedef enum {
     VALUE=0,
