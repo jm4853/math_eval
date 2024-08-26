@@ -1,5 +1,8 @@
 # Maybe pass around ignore list for reduce?
 
+# Use Reduced Expressions
+# 
+
 
 # reduce:   (Expr)          ->  (Expr)
 #           1+(1+2)         ->  1+1+2
@@ -14,6 +17,8 @@
 
 # simplify  (Expr)          ->  (Expr)
 #           (1)(x+1(2+1))   ->  (x+1(2+1))
+#           (-1)(-1)        ->  1
+#           0+x
 #            
 
 
